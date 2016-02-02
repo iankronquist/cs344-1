@@ -1,0 +1,85 @@
+#!/bin/bash
+row=0
+average=0
+sum=0
+k=0
+j=0
+printf "Average\tMedian\n"
+while read myLine
+do
+	file+=$myLine
+	file+=$'	'
+	row=$(echo $row+1|bc)
+	column=$( echo $myLine|sed -e 's/ /\n/g'|wc -l)
+done<$1
+array=($file)
+#echo "column=$column"
+#echo "row=$row"
+
+#file check
+if [[ $row == 0 ]]
+then	
+	echo "No number in this file"
+	exit 0
+fi
+if [[ $column == 0 ]]
+then	
+	echo "No number in this file"
+	exit 0
+fi
+
+rowminus1=$(echo $row-1|bc) 
+avg_correction=`expr $row / 2`
+
+#this part for median
+index=$(echo $row/2|bc)
+index2=$index
+index=$(echo $index-1|bc)
+l=$(echo $index*$column|bc)
+m=$(echo $l+$column|bc)
+mod=$(echo $row%2|bc)
+#echo "$mod"
+for ((i=1; i <= $column  ; i++))
+do
+	sum=0
+	newArray=''
+	k=$(echo $i-1|bc)
+	for ((j=0; j <= $rowminus1; j++)) 
+	do	
+		newArray+=${array[$k]}
+		newArray+=" "
+		sum=$(echo $sum+${array[$k]}|bc)
+		k=$(echo $k+$row|bc)
+	#	echo "k=$k"
+		#median part
+	done
+	newArray=$( echo $newArray|sed -e 's/ /\n/g'|sort -n )
+	newArray=($newArray)
+#	echo "$newArray"
+#	echo "$sum"
+	sum=$(echo $sum+$avg_correction|bc)
+	average=$(echo $sum/$row|bc)
+	if [[ $mod == 0 ]] 
+	then
+#		echo "l=$l"
+#		echo "m=$m"
+		median1=${newArray[$index]}
+		median2=${newArray[$index2]}
+		median=$(echo $median1+$median2|bc)
+		mod2=$(echo $median%2|bc)
+		if [[ $mod2 == 0 ]]
+		then
+			median=$(echo $median/2|bc)
+		else
+			median=$(echo $median/2|bc)
+			median=$(echo $median+1|bc)
+		fi
+#		l=$(echo $l+1|bc)
+#		m=$(echo $m+1|bc)
+
+	else
+		median=${newArray[$index2]}
+#		m=$(echo $m+1)
+	fi
+	echo -e "$average\t$median"
+done

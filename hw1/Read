@@ -1,0 +1,25 @@
+#!/bin/bash
+echo "Average Median"
+while read myLine
+do
+	numbers=$( echo $myLine|sed -e 's/ /\n/g'|sort -n )
+#	echo "$numbers"
+	echo "$myLine"
+	column=$( echo $myLine|sed -e 's/ /\n/g'|sort -n|wc -l )
+	if [[ $column == 0 ]]
+	then
+		echo "no numbers in the file"
+		exit 0
+	fi
+	avg=$(expr `echo $myLine | sed -e 's/ / + /g'`)
+	correction=`expr $column / 2`
+	avg=$(echo $avg + $correction | bc)
+#	avg=`expr $avg / $column`
+#	echo -e "$avgi"
+	avg=$(echo $avg/$column | bc)
+	array=($numbers)
+	line_length=${#array[@]}
+	center_index=$(expr $line_length / 2)
+	median=${array[$center_index]}
+#	echo -e "$avg\t$median"
+	done<$1

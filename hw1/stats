@@ -1,0 +1,148 @@
+#!/bin/bash
+
+#print the valid input 
+usage () {
+	echo "$0 {-rows|-cols} [file]" 1>&2
+	exit 1
+	}
+
+#if more than two parameter, exit with error
+if [[ $# > 2 ]]; then
+	usage
+	exit 1
+fi
+
+#if the file is not readable and $2 is not set
+if [[ ! -z $2 && ! -r $2 ]]; then
+	echo "$0: cannot read file: $2"
+	exit 1
+fi
+
+#if the file starts with r
+if [[ $1 == -r* ]]; then
+	echo "Average Median"
+	while read myLine
+	do
+		#get the numbers sort
+		numbers=$( echo $myLine|sed -e 's/ /\n/g'|sort -n )
+		#number of colums
+		column=$( echo $myLine|sed -e 's/ /\n/g'|sort -n|wc -l )
+		if [[ $column == 0 ]]
+		then
+			echo "no numbers in the file"
+			exit 0
+		fi
+		#get the sum
+		avg=$(expr `echo $myLine | sed -e 's/ / + /g'`)
+		#for the average correction
+		correction=`expr $column / 2`
+		avg=$(echo $avg + $correction | bc)
+#		avg=`expr $avg / $column`
+#		echo -e "$avg"
+		avg=$(echo $avg/$column | bc)
+		#put all numbers into an array
+		array=($numbers)
+		line_length=${#array[@]}
+		center_index=$(expr $line_length / 2)
+		median=${array[$center_index]}
+		echo -e "$avg\t$median"
+		done<"${2:-/dev/stdin}"
+
+#if the file starts with c
+elif [[ $1 == -c* ]]; then
+	row=0
+	average=0
+	sum=0
+	k=0
+	j=0
+	printf "Average\tMedian\n"
+	while read myLine
+	do
+		file+=$myLine
+		file+=$'	'
+		row=$(echo $row+1|bc)
+		column=$( echo $myLine|sed -e 's/ /\n/g'|wc -l)
+	done<"${2:-/dev/stdin}"
+	#get the numbers in an array
+	array=($file)
+	#echo "column=$column"
+	#echo "row=$row"
+
+	#file check
+	if [[ $row == 0 ]]
+	then	
+		echo "No number in this file"
+		exit 0
+	fi
+	if [[ $column == 0 ]]
+	then	
+		echo "No number in this file"
+		exit 0
+	fi
+
+	rowminus1=$(echo $row-1|bc) 
+	avg_correction=`expr $row / 2`
+
+	#this part for median
+	index=$(echo $row/2|bc)
+	index2=$index
+	index=$(echo $index-1|bc)
+	l=$(echo $index*$column|bc)
+	m=$(echo $l+$column|bc)
+	mod=$(echo $row%2|bc)
+	#echo "$mod"
+	for ((i=1; i <= $column  ; i++))
+	do
+		sum=0
+		#newArray is to sort to get the median 
+		newArray=''
+		k=$(echo $i-1|bc)
+		for ((j=0; j <= $rowminus1; j++)) 
+		do	
+			newArray+=${array[$k]}
+			newArray+=" "
+			sum=$(echo $sum+${array[$k]}|bc)
+			k=$(echo $k+$row|bc)
+		#	echo "k=$k"
+			#median part
+		done
+		newArray=$( echo $newArray|sed -e 's/ /\n/g'|sort -n )
+		newArray=($newArray)
+	#	echo "$newArray"
+	#	echo "$sum"
+		sum=$(echo $sum+$avg_correction|bc)
+		average=$(echo $sum/$row|bc)
+		#If the array has even number of numbers, get the average of the two  
+		if [[ $mod == 0 ]] 
+		then
+	#		echo "l=$l"
+	#		echo "m=$m"
+			median1=${newArray[$index]}
+			median2=${newArray[$index2]}
+			median=$(echo $median1+$median2|bc)
+			mod2=$(echo $median%2|bc)
+			#this part is for greater than .5 round to 1, less than .5 round to 0
+			if [[ $mod2 == 0 ]]
+			then
+				median=$(echo $median/2|bc)
+			else
+				median=$(echo $median/2|bc)
+				median=$(echo $median+1|bc)
+			fi
+	#		l=$(echo $l+1|bc)
+	#		m=$(echo $m+1|bc)
+
+		else
+			median=${newArray[$index2]}
+	#		m=$(echo $m+1)
+		fi
+		echo -e "$average\t$median"
+	done
+#if the file starts with wrong char	
+else 
+	usage
+	exit 1
+		
+fi
+
+exit 0

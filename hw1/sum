@@ -1,0 +1,8 @@
+#!/bin/bash
+sum=0
+for ((a=1; a <= 5 ; a++))
+do
+	sum=`expr sum+a`
+done
+echo "$sum"
+exit 0

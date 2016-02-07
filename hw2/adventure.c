@@ -63,7 +63,6 @@ struct room *generate_rooms(){
 		//set connection numbers, 3-6
 		all_room[i].con_max = rand()%4;
 		all_room[i].con_max += 3;
-		printf("con_max is:%d\n", all_room[i].con_max);//debug
 		//pick different names to rooms
 		while (1){
 			// from room0 to room9
@@ -140,16 +139,20 @@ void create_files(struct room rooms[7]){
 }
 
 //test function for 2 rooms
-int test_connection(int room_i, int room_will_connect){
+int test_connection(int a, int b){
 	int i;
 	//if they are the same room, return singal 1 
-	if (room_i == room_will_connect)
+	if (a == b)
 		return 1;
 	//test each connection of room_i to see if any of them are room_will_connect
-	for (i = 0; i < all_room[room_i].con_max; i++) {
-		if ((all_room[room_i].connection[i] == &all_room[room_will_connect]) && (all_room[room_i].connection[i] != NULL)) {	
-		return 1;
+	for (i = 0; i < all_room[a].con_max; i++) {
+		if ((all_room[a].connection[i] == &all_room[b]) && (all_room[a].connection[i] != NULL)) {	
+			return 1;
 		}
+	}
+	for (i = 0; i < all_room[b].con_max; i++){
+		if ((all_room[b].connection[i] == &all_room[a]) && (all_room[b].connection[i] != NULL))
+			return 1;
 	}
 	return 0;
 }
@@ -161,13 +164,14 @@ int connect_room(int room_i, int room_will_connect, struct room all_room[7]){
 	struct room *room1 = &all_room[room_i];
     struct room *room2 = &all_room[room_will_connect];
 	//if number of connection reachers the max, return 0 represent for succeed
-	if (room1->con_num >= 6) 
+	if (room1->con_num == room1->con_max) 
 		return 0;
 	//if they are connected, return 1 represent for fail
 	if (test_connection(room_i, room_will_connect) == 1)
 		return 1;
 	//if the room will be connected reaches the max, return 1 for fail
-	if (room2->con_num >= 6 || room1->con_num >= 6)
+	if ((room2->con_num > room2->con_max)|| (room1->con_num > room1->con_max))
+		
 		return 1;//wrong
 	// Connecting
 	room1->connection[room1->con_num] = room2;
@@ -176,12 +180,20 @@ int connect_room(int room_i, int room_will_connect, struct room all_room[7]){
 	//increase the number of connections
 	room1->con_num++;
 	room2->con_num++;
-	printf("con_num for room1 is: %d\n",room1->con_num);	
-	printf("con_num for room2 is: %d\n",room2->con_num);
+	if (room2->con_num > room2->con_max){
+		room2->con_num--;
+//		printf("2\n");//debug
+	}
+//	printf("con_num for room1 is: %d\n",room1->con_num);	
+//	printf("con_num for room2 is: %d\n",room2->con_num);
 	return 0;
 }
 
-
+void print(){
+	int i;
+	for (i=0; i<7; i++)
+		printf("num_con is: %d\nnum_max is: %d\n",all_room[i].con_num,all_room[i].con_max);
+}
 
 int main(){
 	//initial random thing
@@ -190,6 +202,7 @@ int main(){
 	generate_rooms();
 	//create files
 	create_files(all_room);
+//	print();
 	return 0;
 }
 

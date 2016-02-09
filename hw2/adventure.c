@@ -1,17 +1,16 @@
-#include <dirent.h>
-#include <math.h> //Requires linking with -lm
-#include <pwd.h>
-#include <assert.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <dirent.h>
+#include <pwd.h>
 
 
+//read one room, return it
 struct room read_one_room(char *file_name);
+
 //define room names
 const char *room_names[10] = {
 	"room0", 
@@ -202,17 +201,19 @@ void print(){
 struct room* read_rooms(){
 	int i = 0;
 	char *dir_name = get_name_dir();
-//	struct room rooms[7];
     struct room *rooms = malloc(7 * sizeof(struct room));
-	chdir(dir_name);
+	chdir(dir_name);//debug
 	DIR *dp;	
 	struct dirent *dir;
 	dp = opendir (".");
-	while (dir = readdir (dp)) {
+	while ((dir = readdir (dp))!= NULL) {
+		if (strcmp(dir->d_name, ".") && strcmp(dir->d_name, "..")){
+
+//		printf("file name is: %s\n", dir->d_name);
  		rooms[i] = read_one_room(dir->d_name);
-		i++;
+			i++;
+		}
 	}
-	printf("i shoudl be 7, but it is: %d\n", i);//debug
 	closedir (dp);
 	free(dir_name);
 	chdir("..");
@@ -227,44 +228,58 @@ struct room read_one_room(char *file_name){
 	FILE *fp = fopen(file_name, "r");
 	//read the name 
 	fgets(str, 250, fp);
-	char* token = strtok(str, ":");
-	token = strtok(NULL, " \t\r\n");
-	room.name = token;
-	printf("room.name is: %s|\n", room.name);
+	char* token1 = strtok(str, ":");
+	token1 = strtok(NULL, " \t\r\n");
+	//room.name = malloc(sizeof(char)*5);
+	char *name = malloc(sizeof(char)*5);
+	strcpy (name, token1);
+	room.name = name;
 	//read the type i dont know why do i have to call it twice here
 	fgets(str,250,fp);
-	token = strtok(str, ":");
-	token = strtok(NULL, " \t\r\n");
-	printf("room.type is: %s|\n", token);
-	if (!strcmp(token, "START_ROOM"))
+
+	char* token2 = strtok(str, ":");
+
+	token2 = strtok(NULL, " \t\r\n");
+//	printf("room.type is: %s|\n", token2);
+
+	if (!strcmp(token2, "START_ROOM"))
 		room.type = start;
-	else if (!strcmp(token, "END_ROOM"))
+	else if (!strcmp(token2, "END_ROOM"))
 		room.type = end;
-	else if (!strcmp(token, "MID_ROOM"))
+	else if (!strcmp(token2, "MID_ROOM"))
 		room.type = mid;
-	printf ("room type is: %d\n", room.type);
+//	printf ("room type is: %d\n", room.type);
+
 	//read the connections
-	for (k = 0; k < 4; k++){
+//	for (k = 0; k < 4; k++){
+	while(1){
+
 		fgets(str,250,fp);
-		token = strtok(str, ":");
-		token = strtok(NULL, " \t\r\n");
+		if (feof(fp))
+			break;
+		char* token3 = strtok(str, ":");
+		token3 = strtok(NULL, " \t\r\n");
+//		printf("token3 is: %s\n",token3);
+
 		for (i = 0; i < 7; i++){
-			if(!strcmp(token,all_room[i].name)){
+			if(!strcmp(token3 ,all_room[i].name)){
 				room.connection[j] = &all_room[i];
 				j++;
+
+				//printf("connections: %s\n", room.connection[j]->name);
 			}
 		}
 	}	
+
 	room.con_num = j;
 	room.con_max = j;
-	printf("room.max is: %d\n", room.con_max);//debug
-	printf("room.connection[1] is:%d\n", room.connection[1]);
 	fclose(fp);
 	return room;
 }
 
 void end_of_game(int steps, struct room ** visited, int count){
 	int i=0;
+	
 	printf("YOU HAVE FOUND THE END ROOM. CONGRATULATIONS!\n");
 	printf("YOU TOOK %d STEPS. YOUR PATH TO VICTORY WAS:\n", steps);
 	for (i = 0; i < count; i++) {
@@ -272,10 +287,11 @@ void end_of_game(int steps, struct room ** visited, int count){
 	}
 }
 
-void game(){
+void game(struct room* read_rooms){
 	int i;
+	int flag = 1;
 	//starting room is the first one at the room array
-	struct room *current_room = &all_room[0];		
+	struct room *current_room = &read_rooms[0];		
 	//for visited rooms. choose a big number 30
 	int size = 30;
 	struct room **visited = malloc(size*sizeof(struct room*));
@@ -287,35 +303,41 @@ void game(){
 	char input[5];
 	//game loop forever
 	while(1){
-		LOOP:
-		//check if game is end
-		if(current_room->type == 2){
-			end_of_game(steps, visited, count);
-			free(visited);
-			return;
-		}
-		//print game info
-		printf("\nCURRENT LOCATION: %s\n", current_room->name);
-		printf("POSSIBLE CONNECTIONS: ");
-		for (i = 0; i < current_room->con_max-1; i++) {
-			printf("%s, ", current_room->connection[i]->name);
-		}
-		printf("%s.\n", current_room->connection[current_room->con_max-1]->name);
-		//user input
-		printf("WHERE TO? >");
-		scanf("%s", &input);
-		//check input
-		for (i = 0; i < current_room->con_max; i++) {
-			if (strncmp(input, current_room->connection[i]->name, 5) == 0){
-				current_room = current_room->connection[i];
-				//fix me: reallocate size
-				visited[count] = current_room;
-				count++;
-				steps++;
-				//fix me: count is wrong
-				goto LOOP;
+		while(flag == 1){
+			flag = 0;	
+			//check if game is end
+			if(current_room->type == 2){
+				end_of_game(steps, visited, count);
+				free(visited);
+				return;
+			}
+			//print game info
+			printf("\nCURRENT LOCATION: %s\n", current_room->name);
+			printf("POSSIBLE CONNECTIONS: ");
+			for (i = 0; i < current_room->con_max-1; i++) {
+				printf("%s, ", current_room->connection[i]->name);
+			}
+			printf("%s.\n", current_room->connection[current_room->con_max-1]->name);
+			//user input
+			printf("WHERE TO? >");
+			scanf("%s", &input);
+			//check input
+			for (i = 0; i < current_room->con_max; i++) {
+				if (strncmp(input, current_room->connection[i]->name, 5) == 0){
+					current_room = current_room->connection[i];
+					//reallocate size
+					if (count >= size){
+						size = size + size;
+						visited = realloc(visited, size*sizeof(struct room*));
+					}
+					visited[count] = current_room;
+					count++;
+					steps++;
+					flag = 1;
+				}
 			}
 		}
+		//if cannot find match
 		printf("\nHUH? I DON’T UNDERSTAND THAT ROOM. TRY AGAIN.\n");
 	}
 
@@ -334,8 +356,13 @@ int main(){
 	generate_rooms();
 	//create files
 	create_files(all_room);
-//	print();
-	game();
+	//read rooms from a file
+	struct room *read_all_rooms = read_rooms();
+	//start game with the reading rooms
+	game(read_all_rooms);
+	//free memory
+	free(read_all_rooms);
 	return 0;
 }
+
 
